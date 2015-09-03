@@ -18,16 +18,25 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import curses,sys
+import curses
 from hivex import Hivex
 from sys import argv
 from os.path import isfile
 
 def listHiveDir(hive,key=None):
+    stdout.write(str(key))
     key=hive.root() if key==None else key
-    lst=[] if key==hive.root() else [('..'+38*' ',hive.node_parent(key)),]
+    lst=[] if key==hive.root() else [('..'+38*' ',hive.node_parent(key),0),]
     for child in hive.node_children(key):
-        lst.append(((hive.node_name(child)+40*' ')[:40],child))
+        lst.append(((hive.node_name(child)+40*' ')[:40],child,0))
+    for child in hive.node_values(key):
+        lst.append(((hive.value_key(child)+40*' ')[:40],child,1))
+    return lst
+
+def listHivePair(hive,key):
+    lst=[('..'+38*' ',hive.root(),0),]
+    for i in hive.value_value(key):
+        lst.append(((str(i)+40*' ')[:40],i,'0'))
     return lst
 
 class Cursor(object):
@@ -35,9 +44,11 @@ class Cursor(object):
         self.browser=browser
         self.pos=0;
     def show(self):
-        self.browser.win.addstr(self.pos,0,self.browser.visibleLines[self.pos][0],curses.color_pair(2))
+        color=curses.color_pair(2) if self.browser.visibleLines[self.pos][2]==0 else curses.color_pair(4)
+        self.browser.win.addstr(self.pos,0,self.browser.visibleLines[self.pos][0],color)
     def __hide(self):
-        self.browser.win.addstr(self.pos,0,self.browser.visibleLines[self.pos][0],curses.color_pair(1))
+        color=curses.color_pair(1) if self.browser.visibleLines[self.pos][2]==0 else curses.color_pair(3)
+        self.browser.win.addstr(self.pos,0,self.browser.visibleLines[self.pos][0],color)
     def move(self,direction):
         self.__hide()
         if direction=='u':
@@ -67,8 +78,8 @@ class Browser(object):
         self.win.clear()
         i=0
         for line in self.visibleLines:
-            self.win.addstr(i,0,line[0],curses.color_pair(1))
-            
+            color=curses.color_pair(1) if line[2]==0 else curses.color_pair(3)
+            self.win.addstr(i,0,line[0],color)
             i+=1
         self.drawed=i
 
@@ -77,7 +88,9 @@ class Gui(object):
         self.hive=hive
         curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_BLUE)
         curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
-        win=curses.newwin(20,41,1,1)
+        curses.init_pair(3,curses.COLOR_MAGENTA,curses.COLOR_BLUE)
+        curses.init_pair(4,curses.COLOR_YELLOW,curses.COLOR_GREEN)
+        win=curses.newwin(20,141,1,1)
         stdscr.refresh()
         key=None
         browser=Browser(win,listHiveDir(hive))
@@ -92,10 +105,11 @@ class Gui(object):
                     cursor.move('u')
                 if key=='B':
                     cursor.move('d')
-            selected=browser.visibleLines[cursor.pos][1]
+            selected=browser.visibleLines[cursor.pos]
             del cursor
             del browser
-            browser=Browser(win,listHiveDir(hive,selected))
+            dirListing=listHiveDir(hive,selected[1]) if selected[2]==0 else listHivePair(hive,selected[1])
+            browser=Browser(win,dirListing)
             cursor=Cursor(browser)
 
 def main():
@@ -106,6 +120,5 @@ def main():
         print('\nUnable to open '+argv[1])
         exit()
     curses.wrapper(Gui,Hivex(argv[1]))
-
 
 main()
