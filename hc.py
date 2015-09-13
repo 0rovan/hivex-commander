@@ -24,19 +24,20 @@ from sys import argv
 from os.path import isfile
 
 def listHiveDir(hive,key=None):
-    stdout.write(str(key))
+    global SIZE
     key=hive.root() if key==None else key
-    lst=[] if key==hive.root() else [('..'+38*' ',hive.node_parent(key),0),]
+    lst=[] if key==hive.root() else [('..'+(SIZE[0]-2)*' ',hive.node_parent(key),0),]
     for child in hive.node_children(key):
-        lst.append(((hive.node_name(child)+40*' ')[:40],child,0))
+        lst.append(((hive.node_name(child)+SIZE[0]*' ')[:SIZE[0]],child,0))
     for child in hive.node_values(key):
-        lst.append(((hive.value_key(child)+40*' ')[:40],child,1))
+        lst.append(((hive.value_key(child)+SIZE[0]*' ')[:SIZE[0]],child,1))
     return lst
 
 def listHivePair(hive,key):
-    lst=[('..'+38*' ',hive.root(),0),]
+    global SIZE
+    lst=[('..'+(SIZE[0]-2)*' ',hive.root(),0),]
     for i in hive.value_value(key):
-        lst.append(((str(i)+40*' ')[:40],i,'0'))
+        lst.append(((str(i)+SIZE[0]*' ')[:SIZE[0]],i,'0'))
     return lst
 
 class Cursor(object):
@@ -73,7 +74,8 @@ class Browser(object):
         self.count=len(lines)
     @property
     def visibleLines(self):
-        return self.lines[0+self.shift:20+self.shift] if self.count>20 else self.lines
+        global SIZE
+        return self.lines[0+self.shift:SIZE[1]+self.shift] if self.count>SIZE[1] else self.lines
     def draw(self):
         self.win.clear()
         i=0
@@ -85,12 +87,13 @@ class Browser(object):
 
 class Gui(object):
     def __init__(self,stdscr,hive):
+        global SIZE
         self.hive=hive
         curses.init_pair(1,curses.COLOR_WHITE,curses.COLOR_BLUE)
         curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
         curses.init_pair(3,curses.COLOR_MAGENTA,curses.COLOR_BLUE)
         curses.init_pair(4,curses.COLOR_YELLOW,curses.COLOR_GREEN)
-        win=curses.newwin(20,141,1,1)
+        win=curses.newwin(SIZE[1],SIZE[0]+1,1,1) #+100
         stdscr.refresh()
         key=None
         browser=Browser(win,listHiveDir(hive))
@@ -103,8 +106,18 @@ class Gui(object):
                 key=browser.win.getkey()
                 if key=='A':
                     cursor.move('u')
-                if key=='B':
+                elif key=='B':
                     cursor.move('d')
+                elif key=='H':
+                    browser.shift=0
+                    browser.draw()
+                    cursor.pos=0
+                    cursor.show()
+                elif key=='F':
+                    browser.shift=browser.count-SIZE[1] if browser.count-SIZE[1]>1 else 0
+                    browser.draw()
+                    cursor.pos=len(browser.visibleLines)-1
+                    cursor.show()
             selected=browser.visibleLines[cursor.pos]
             del cursor
             del browser
@@ -113,6 +126,8 @@ class Gui(object):
             cursor=Cursor(browser)
 
 def main():
+    SIZE=(40,20)
+    global SIZE
     if len(argv)<2 or argv[1] in('-h','--help'):
         print('\nUsage: '+__file__.split('/')[-1]+' HIVE_FILE')
         exit()
