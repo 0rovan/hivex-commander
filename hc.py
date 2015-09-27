@@ -35,9 +35,9 @@ def listHiveDir(hive,key=None):
 
 def listHivePair(hive,key):
     global SIZE
-    lst=[('..'+(SIZE[0]-2)*' ',hive.root(),0),]
-    for i in hive.value_value(key):
-        lst.append(((str(i)+SIZE[0]*' ')[:SIZE[0]],i,'0'))
+    lst=[('/'+(SIZE[0]-2)*' ',hive.root(),0),]
+    value=hive.value_value(key)
+    lst.append(((str(value[0])+' : '+value[1].decode('utf-16le')+SIZE[0]*' ')[:SIZE[0]],9999,'0'))
     return lst
 
 class Cursor(object):
@@ -93,7 +93,7 @@ class Gui(object):
         curses.init_pair(2,curses.COLOR_BLACK,curses.COLOR_GREEN)
         curses.init_pair(3,curses.COLOR_MAGENTA,curses.COLOR_BLUE)
         curses.init_pair(4,curses.COLOR_YELLOW,curses.COLOR_GREEN)
-        win=curses.newwin(SIZE[1],SIZE[0]+1,1,1) #+100
+        win=curses.newwin(SIZE[1],SIZE[0]+1,1,1)
         stdscr.refresh()
         key=None
         browser=Browser(win,listHiveDir(hive))
@@ -126,8 +126,9 @@ class Gui(object):
             cursor=Cursor(browser)
 
 def main():
-    SIZE=(40,20)
     global SIZE
+    SIZE=(40,20)
+
     if len(argv)<2 or argv[1] in('-h','--help'):
         print('\nUsage: '+__file__.split('/')[-1]+' HIVE_FILE')
         exit()
